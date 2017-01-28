@@ -2,7 +2,6 @@ package phderome.challenge
 
 import org.scalacheck.{Prop, _}
 
-import scala.annotation.tailrec
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable.ArrayBuffer
 object ClientAccessSpecification extends Properties("ClientAccess") {
@@ -52,7 +51,7 @@ object ClientAccessSpecification extends Properties("ClientAccess") {
                         newSeq: IndexedSeq[ClientAttributes],
                         w: Long): Boolean = {
     val real = sessionize(client, newSeq.toIterator, w).toSeq
-    val independent = simpleSessionize(client, newSeq.toIterator, w).toSeq
+    val independent = imperativeSessionize(client, newSeq.toIterator, w).toSeq
     val zippedKeys = real.map(x => x.sessionKey).zip(independent.map(_.sessionKey))
     zippedKeys.forall(pair => pair._1 == pair._2) // verify real and independent keys are the same and in same order.
   }
@@ -61,32 +60,43 @@ object ClientAccessSpecification extends Properties("ClientAccess") {
                           newSeq: IndexedSeq[ClientAttributes],
                           w: Long): Boolean = {
     val real = sessionize(client, newSeq.toIterator, w).toSeq
-    val independent = simpleSessionize(client, newSeq.toIterator, w).toSeq
+    val independent = imperativeSessionize(client, newSeq.toIterator, w).toSeq
     val zippedValues = real.map(x => x.data).zip(independent.map(x => x.data))
     // verify real and independent values are the same and in same order (a bit more complex thanks to Java equality complexity on arrays).
     zippedValues.forall(pair => pair._1.zip(pair._2).forall(pair => pair._1 == pair._2))
   }
 
-  def simpleSessionize(client: String,
-                       items: Iterator[ClientAttributes],
-                       windowTimeSpanAsNanos: Long): Iterator[SessionWindow] = {
-    def belongsToEarlierWindow(baseEpoch: Long)(item: (ClientAttributes, Int)): Boolean =
-      item._2 == 0 || item._1.epochNanosecs <= baseEpoch + windowTimeSpanAsNanos
-
-    // timeSequencedItems must be monotonically increasing by time (epochNanosecs).
-       @tailrec
-    def goSessionize(acc: IndexedSeq[(Long, IndexedSeq[ClientAttributes])],
-                     timeSequencedItems: IndexedSeq[(ClientAttributes, Int)]): IndexedSeq[(Long, IndexedSeq[ClientAttributes])] = {
-      val baseEpoch = timeSequencedItems.head._1.epochNanosecs
-      val (current, next) = timeSequencedItems.span(belongsToEarlierWindow(baseEpoch))
-      val appendable = (baseEpoch, current.map(_._1))
-      if (next.isEmpty) acc :+ appendable
-      else goSessionize(acc :+ appendable, next.map(_._1).zipWithIndex)
-    }
-
+  def imperativeSessionize(client: String,
+    items: Iterator[ClientAttributes],
+    windowTimeSpanAsNanos: Long): Iterator[SessionWindow] = {
+    // I would have liked to use Windowing functions with frames, something like org.apache.spark.sql.expressions.Window
+    // Maybe reading up on Spark Streaming would work??? Highly imperative below... Seems like we're forced to use Arrays/ArrayBuffers here.
+    // Don't fight the framework. A less imperative and simpler solution is found in unit test to validate the algorithm here.
     val timeSequencedItems = items.toIndexedSeq.sortBy(_.epochNanosecs)
-    goSessionize(IndexedSeq.empty, timeSequencedItems.zipWithIndex)
-      .map(x => SessionWindow(SessionKey(client, x._1), x._2.toArray)).toIterator
+    var currEpoch = timeSequencedItems.head.epochNanosecs // head is generally unsafe, but this is used in context of having done a groupByKey so safe.
+
+    var currSession: (SessionKey, ArrayBuffer[ClientAttributes]) = (SessionKey(client, currEpoch), ArrayBuffer[ClientAttributes]())
+    // this is initialized with nothing in ArrayBuffer of ClientAttributes because we use invariant that each entry is made by verifying against a reference
+    // currEpoch for window time (even though we know here that orderedItems.head will qualify); this ensures we don't insert an element twice
+    // when it should be inserted only once.
+
+    val sessions = ArrayBuffer[(SessionKey, ArrayBuffer[ClientAttributes])]() // likewise, here we insert only complete SessionWindows
+    // (not exactly a SessionWindow since we use mutable ArrayBuffer in place of immutable Array.
+
+    val it = timeSequencedItems.iterator
+    while(it.nonEmpty) {
+      val attributes = it.next()
+      if( currEpoch + windowTimeSpanAsNanos < attributes.epochNanosecs ) {
+        currEpoch = attributes.epochNanosecs
+        sessions ++= Array(currSession) // capture current session
+        currSession = (SessionKey(client, currEpoch), ArrayBuffer(attributes)) // start a new one from current attributes
+      }
+      else {
+        currSession._2 += attributes
+      }
+    }
+    sessions ++= Array(currSession) // last session must be captured here since its epoch will qualify (found thanks to scalacheck!)
+    sessions.map(x => SessionWindow(x._1, x._2.toArray)).toIterator
   }
 
    def swap( arr: ArrayBuffer[String], a: Int, b: Int): ArrayBuffer[String] = {
