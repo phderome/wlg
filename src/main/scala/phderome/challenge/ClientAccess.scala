@@ -27,10 +27,11 @@ case class SessionWindow(sessionKey: SessionKey, data: Array[ClientAttributes]) 
 case class SessionizedSummary(sessionKey: SessionKey, count: Long) {
   override def toString: String = s"($sessionKey, $count)"
 }
+case class ClientDurationAndSize(client: String, durationAndSize: DurationAndSize)
 
 case class ClientDurationTally(client: String, durationTotal: Double, durationSize: Long)
 case class ClientDurationAverage(client: String, durationAverage: Double) {
-  def pretty: String = f"client: $client%s ${durationAverage/ClientAccess.billion}%5.6f"
+  override def toString: String = f"client: $client%s ${durationAverage/ClientAccess.billion}%5.6f"
 }
 
 object ClientAccess {
