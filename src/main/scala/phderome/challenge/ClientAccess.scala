@@ -88,8 +88,8 @@ object ClientAccess {
 
   // here we capture sessions of one element, but they'll be discarded later.
   def sessionize(client: String,
-                       items: Iterator[ClientAttributes],
-                       windowTimeSpanAsNanos: Long): Iterator[SessionWindow] = {
+                 items: Iterator[ClientAttributes],
+                 windowTimeSpanAsNanos: Long): Iterator[SessionWindow] = {
     def belongsToEarlierWindow(baseEpoch: Long)(item: (ClientAttributes, Int)): Boolean =
       item._2 == 0 || item._1.epochNanosecs <= baseEpoch + windowTimeSpanAsNanos
 
