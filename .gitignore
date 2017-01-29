@@ -1,10 +1,13 @@
-.idea
-data/2015_07_22_mktplace_shop_web_log_sample.log.gz
-output/AvgDuration.txt
-output/EngagedClients/
-output/SessionizedCounts/
-output/UniqueUrl.txt
-project/project/
-project/target/
-spark-warehouse/
+# Created by .ignore support plugin (hsz.mobi)
+.DS_Store
+.idea/*.xml
+.idea/copyright/
+.idea/libraries/*
+.idea/modules/
+FIXParser.iml
+project/
+sbt
+sbt-launch-0.13.1.jar
+sbt.bat
+sbt.debug
 target/
