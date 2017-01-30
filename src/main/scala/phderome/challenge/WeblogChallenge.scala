@@ -51,11 +51,12 @@ object WeblogChallenge {
       .flatMap(toClientAccess)
       .groupByKey(_.client)
       .mapValues(datum => ClientAttributes(datum.attributes.epochNanosecs, datum.attributes.uri))
-      .flatMapGroups((client, accesses) => sessionize(client, accesses, windowAsNanos))
+      .flatMapGroups((client, attributes) => sessionize(client, attributes, windowAsNanos))
   }
 
   def getDurationAndSize(keyedSessionWindows: KeyValueGroupedDataset[SessionKey, SessionWindow])
                         (implicit spark: SparkSession): Writer[List[String], Dataset[ClientDurationAndSize]] = {
+    // we need the groups here because getDurationAndSizeBySessionWithClient returns an Option and I guess I'd have to supply an Encoder for it.
     import spark.implicits._
     "(getDurationAndSize) " ~> keyedSessionWindows
       .flatMapGroups((k, sWindows) => sWindows.flatMap(w => getDurationAndSizeBySessionWithClient(k, w.data)))

@@ -89,24 +89,24 @@ object ClientAccess {
 
   // here we capture sessions of one element, but they'll be discarded later.
   def sessionize(client: String,
-                 items: Iterator[ClientAttributes],
+                 attributes: Iterator[ClientAttributes],
                  windowTimeSpanAsNanos: Long): Iterator[SessionWindow] = {
     def belongsToEarlierWindow(baseEpoch: Long)(item: (ClientAttributes, Int)): Boolean =
       item._2 == 0 || item._1.epochNanosecs <= baseEpoch + windowTimeSpanAsNanos
 
-    // timeSequencedItems must be monotonically increasing by time (epochNanosecs).
+    // timeSequencedAttrs must be monotonically increasing by time (epochNanosecs).
     @tailrec
     def goSessionize(acc: IndexedSeq[(Long, IndexedSeq[ClientAttributes])],
-                     timeSequencedItems: IndexedSeq[(ClientAttributes, Int)]): IndexedSeq[(Long, IndexedSeq[ClientAttributes])] = {
-      val baseEpoch = timeSequencedItems.head._1.epochNanosecs
-      val (current, next) = timeSequencedItems.span(belongsToEarlierWindow(baseEpoch))
+                     timeSequencedAttrs: IndexedSeq[(ClientAttributes, Int)]): IndexedSeq[(Long, IndexedSeq[ClientAttributes])] = {
+      val baseEpoch = timeSequencedAttrs.head._1.epochNanosecs
+      val (current, next) = timeSequencedAttrs.span(belongsToEarlierWindow(baseEpoch))
       val appendable = (baseEpoch, current.map(_._1))
       if (next.isEmpty) acc :+ appendable
       else goSessionize(acc :+ appendable, next.map(_._1).zipWithIndex)
     }
 
-    val timeSequencedItems = items.toIndexedSeq.sortBy(_.epochNanosecs)
-    goSessionize(IndexedSeq.empty, timeSequencedItems.zipWithIndex)
+    val timeSequencedAttrs = attributes.toIndexedSeq.sortBy(_.epochNanosecs)
+    goSessionize(IndexedSeq.empty, timeSequencedAttrs.zipWithIndex)
       .map(x => SessionWindow(SessionKey(client, x._1), x._2.toArray)).toIterator
   }
 }

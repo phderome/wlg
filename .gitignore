@@ -1,10 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 .DS_Store
-.idea/*.xml
-.idea/copyright/
-.idea/libraries/*
-.idea/modules/
-FIXParser.iml
+.idea/
+conf/
 project/
 sbt
 sbt-launch-0.13.1.jar
