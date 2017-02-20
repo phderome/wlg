@@ -8,3 +8,4 @@ sbt-launch-0.13.1.jar
 sbt.bat
 sbt.debug
 target/
+output/EngagedClients
