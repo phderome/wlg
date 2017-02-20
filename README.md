@@ -1,11 +1,11 @@
-# Private  p a y   TM  L A B s
+# Analytics using SPARK SQL
 
+See [github statement of problem](https://github.com/PaytmLabs/WeblogChallenge/blob/master/README.md)
 ## Build and run
 Copy a suitable data file such as `2015_07_22_mktplace_shop_web_log_sample.log.gz` to the `data` folder.
 ```
 sbt assembly
-spark-submit --class "phderome.challenge.WeblogChallenge"   --master local[4] target/scala-2.11/paytmphderome_2.11-1.0.jar  
-data/2015_07_22_mktplace_shop_web_log_sample.log.gz
+spark-submit --class "phderome.challenge.WeblogChallenge" --master local[4] target/scala-2.11/paytmphderome_2.11-1.0.jar data/2015_07_22_mktplace_shop_web_log_sample.log.gz
 ```
 
 ## Results
